@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plataforma de Mantenimiento de Equipos Estáticos</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1c2430;--mu:#6b7684;--bd:#dfe3e8;--ac:#1f5fbf;--ok:#1d8a4e;--wa:#c27a00;--hi:#c0392b;--mh:#d9622b}
+@media(prefers-color-scheme:dark){:root{--bg:#14181e;--card:#1c222b;--tx:#e8ecf1;--mu:#93a0b0;--bd:#2d3540;--ac:#5b9bff;--ok:#43c07a;--wa:#e0a030;--hi:#ef6b5b;--mh:#f08a52}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{padding:14px 16px 0}
+h1{font-size:18px;margin:0 0 2px}
+.sub{color:var(--mu);font-size:12px}
+nav{display:flex;gap:4px;overflow-x:auto;padding:10px 12px 0;border-bottom:1px solid var(--bd)}
+nav button{border:0;background:none;color:var(--mu);padding:9px 12px;font:inherit;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
+nav button.on{color:var(--ac);border-color:var(--ac)}
+main{padding:14px;max-width:1000px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+h2{font-size:15px;margin:0 0 10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--bd);vertical-align:top}
+th{color:var(--mu);font-weight:600;font-size:12px}
+.wrap{overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mu)}
+input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);font:inherit;font-size:14px}
+button.b{background:var(--ac);color:#fff;border:0;border-radius:6px;padding:8px 12px;font:inherit;font-weight:600;cursor:pointer}
+button.g{background:none;color:var(--ac);border:1px solid var(--bd);border-radius:6px;padding:7px 10px;font:inherit;cursor:pointer}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;color:#fff}
+.Alto{background:var(--hi)}.MedioAlto{background:var(--mh)}.Medio{background:var(--wa)}.Bajo{background:var(--ok)}
+.res{background:var(--bg);border-radius:8px;padding:10px;font-size:13px;margin-top:10px}
+.big{font-size:22px;font-weight:700}
+.mx{display:grid;grid-template-columns:28px repeat(5,1fr);gap:3px;font-size:11px}
+.mx div{min-height:46px;border-radius:5px;padding:3px;color:#fff;font-weight:600;word-break:break-word}
+.mx .h{background:none;color:var(--mu);min-height:0;display:flex;align-items:center;justify-content:center}
+.al{color:var(--hi);font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.row>*{flex:1;min-width:110px}
+.mu{color:var(--mu);font-size:12px}
+tr.click{cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1>Gestión de mantenimiento · Equipos estáticos</h1>
+<div class="sub">Espesores mínimos · CML/TML · Isométricos · Planificación CBM + RBI (solo adelgazamiento)</div></header>
+<nav id="nav"></nav>
+<main id="app"></main>
+
+<script>
+// ===== Datos base =====
+const MATS={'SA-516 Gr. 70':null,'SA-285 Gr. C':null,'SA-106 Gr. B':null,'SA-333 Gr. 6':null,'SA-105':null,'SA-240 Type 304L':null,'SA-312 TP304L':null,'SA-179':null,'Personalizado / no listado':null};
+const MAT_INFO={
+ 'SA-516 Gr. 70':'Acero al carbono · Placa · Cascos y cabezales de recipientes','SA-285 Gr. C':'Acero al carbono · Placa · Recipientes de presión baja o moderada',
+ 'SA-106 Gr. B':'Acero al carbono · Pipe sin costura · Tuberías de proceso y temperatura elevada','SA-333 Gr. 6':'Acero al carbono · Pipe · Tuberías para baja temperatura',
+ 'SA-105':'Acero al carbono · Forja · Bridas y accesorios forjados','SA-240 Type 304L':'Acero inoxidable austenítico · Placa / lámina · Componentes soldados',
+ 'SA-312 TP304L':'Acero inoxidable austenítico · Pipe · Tuberías inoxidables','SA-179':'Acero bajo en carbono · Tube · Tubos de intercambiadores y condensadores',
+ 'Personalizado / no listado':'Ingresar identificación y S desde la documentación técnica'
+};
+const FAMILIAS={estanques_recipientes:'Estanques y recipientes',intercambiadores:'Intercambiadores de calor',tuberias:'Tuberías',torres_enfriamiento:'Torres de enfriamiento',hornos:'Hornos',otros:'Otros equipos estáticos'};
+const SUBTIPOS={
+ estanques_recipientes:{estanque:'Estanque',recipiente:'Recipiente a presión',separador:'Separador',reactor_digestor:'Reactor / digestor',torre_columna:'Torre / columna de proceso',silo:'Silo',acumulador_desaireador:'Acumulador / desaireador'},
+ intercambiadores:{intercambiador:'Intercambiador de calor',condensador:'Condensador',calentador:'Calentador / precalentador',enfriador:'Enfriador',evaporador:'Evaporador'},
+ tuberias:{linea_proceso:'Tubería / línea de proceso'},torres_enfriamiento:{torre_enfriamiento:'Torre de enfriamiento'},hornos:{horno:'Horno'},
+ otros:{filtro:'Filtro',scrubber_lavador:'Scrubber / lavador de gases',chimenea:'Chimenea',otro:'Otro equipo estático'}
+};
+const TIPOS={cil:'Cilindro (casco)',esf:'Esfera',cab:'Cabezal elíptico 2:1',tub:'Tubería'};
+const NORMA={cil:'ASME VIII-1 UG-27',esf:'ASME VIII-1 UG-27(d)',cab:'ASME VIII-1 UG-32',tub:'ASME B31.3 ec. 3a'};
+const KEY='plataforma-estaticos-v1';
+const seed=()=>({sel:0,eq:[
+{tag:'V-101',desc:'Separador de proceso',familia:'estanques_recipientes',subtipo:'separador',tipo:'cil',mat:'SA-516 Gr. 70',S:138,E:0.85,P:1.2,T:120,D:2000,CA:3,tnom:14,inst:'2008-03-01',cons:4,
+ iso:[{cod:'ISO-V101-01',nota:'Casco, boquillas N1-N4'}],
+ cmls:[{id:'CML-1',tipo:'CML',ub:'Casco, zona media',lect:[{f:'2016-05-10',e:12.6},{f:'2022-05-12',e:11.9},{f:'2025-09-15',e:11.5}]},
+       {id:'CML-2',tipo:'CML',ub:'Casco, nivel de líquido',lect:[{f:'2016-05-10',e:12.0},{f:'2022-05-12',e:11.0},{f:'2025-09-15',e:10.6}]}]},
+{tag:'L-6-P-1002',desc:'Línea 6" proceso',familia:'tuberias',subtipo:'linea_proceso',tipo:'tub',mat:'SA-106 Gr. B',S:118,E:1,P:2.5,T:200,D:168.3,CA:1.5,tnom:7.11,inst:'2012-06-01',cons:3,
+ iso:[{cod:'ISO-1002-03',nota:'Hoja 3 de 5, codos 2 y 3'}],
+ cmls:[{id:'TML-1',tipo:'TML',ub:'Codo 2',lect:[{f:'2018-04-02',e:6.5},{f:'2024-04-08',e:6.1}]}]},
+{tag:'E-205',desc:'Casco intercambiador',familia:'intercambiadores',subtipo:'intercambiador',tipo:'cil',mat:'SA-516 Gr. 70',S:138,E:1,P:0.8,T:90,D:900,CA:3,tnom:9.5,inst:'2010-09-01',cons:2,
+ iso:[],cmls:[{id:'CML-1',tipo:'CML',ub:'Casco, lado entrada',lect:[{f:'2019-06-20',e:9.2},{f:'2025-06-18',e:8.6}]}]}
+]});
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.eq)S=seed();
+const MAT_ALIAS={'SA-516-70':'SA-516 Gr. 70','SA-106-B':'SA-106 Gr. B','SA-240-304':'SA-240 Type 304L','SA-285-C':'SA-285 Gr. C'};
+for(const q of S.eq){if(!q.familia)q.familia=q.tipo==='tub'?'tuberias':'otros';if(!q.subtipo)q.subtipo=Object.keys(SUBTIPOS[q.familia])[0];q.mat=MAT_ALIAS[q.mat]||q.mat}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let tab='eq';
+
+// ===== Motor de cálculo =====
+const n=(x,d=2)=>(x==null||isNaN(x))?'–':Number(x).toFixed(d);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const yrs=(a,b)=>(new Date(b)-new Date(a))/(365.25*864e5);
+const addY=(d,y)=>new Date(new Date(d).getTime()+y*365.25*864e5);
+const fd=d=>d?new Date(d).toISOString().slice(0,10):'–';
+
+function tmin(q){
+  const {P,S:s,E,D}=q;let t,f;
+  if(q.tipo==='cil'){const R=D/2,d=s*E-0.6*P;t=d>0?P*R/d:null;f='t = P·R / (S·E − 0.6·P)  con R = D/2'}
+  else if(q.tipo==='esf'){const R=D/2,d=2*s*E-0.2*P;t=d>0?P*R/d:null;f='t = P·R / (2·S·E − 0.2·P)  con R = D/2'}
+  else if(q.tipo==='cab'){const d=2*s*E-0.2*P;t=d>0?P*D/d:null;f='t = P·D / (2·S·E − 0.2·P)'}
+  else{const d=2*(s*E+P*0.4);t=d>0?P*D/d:null;f='t = P·D / (2·(S·E + P·Y))  con Y = 0.4, D exterior'}
+  return {t,f,td:t==null?null:t+q.CA};
+}
+const rate=(a,b)=>{const y=yrs(a.f,b.f);return y>0?(a.e-b.e)/y:0};
+const probCat=rl=>rl<=2?5:rl<=5?4:rl<=10?3:rl<=20?2:1;
+const CAP={Alto:2,MedioAlto:4,Medio:6,Bajo:10};
+const lvl=r=>r>=15?'Alto':r>=8?'MedioAlto':r>=4?'Medio':'Bajo';
+const LBL={Alto:'Alto',MedioAlto:'Medio-alto',Medio:'Medio',Bajo:'Bajo'};
+
+function analyze(q){
+  const tm=tmin(q);const res=[];
+  for(const c of q.cmls){
+    const L=[...c.lect].sort((a,b)=>a.f<b.f?-1:1);const last=L[L.length-1];
+    if(!last){res.push({c,last:null});continue}
+    const lt=rate({f:q.inst,e:q.tnom},last);
+    const st=L.length>=2?rate(L[L.length-2],last):lt;
+    const cr=Math.max(lt,st,0);
+    const rl=tm.t==null?null:Math.max(0,cr>0.001?Math.min(99,(last.e-tm.t)/cr):99);
+    res.push({c,last,lt,st,cr,rl});
+  }
+  const m=res.filter(r=>r.last&&r.rl!=null);
+  const gov=m.sort((a,b)=>a.rl-b.rl)[0];
+  const out={tm,res:res,gov};
+  if(gov){
+    out.P=probCat(gov.rl);out.C=q.cons;out.R=out.P*out.C;out.lv=lvl(out.R);
+    out.interval=Math.min(gov.rl/2,CAP[out.lv]);
+    const lastDate=res.filter(r=>r.last).map(r=>r.last.f).sort().pop();
+    out.lastDate=lastDate;out.next=addY(lastDate,out.interval);
+    out.alerts=[];
+    for(const r of res){if(!r.last)continue;
+      if(r.last.e<=tm.t+1)out.alerts.push(`${r.c.id}: espesor a ≤1 mm del mínimo`);
+      if(r.st>1.5*r.lt&&r.st>0.05)out.alerts.push(`${r.c.id}: velocidad reciente (${n(r.st)}) >1,5× histórica (${n(r.lt)})`);
+    }
+    if(gov.rl<2)out.alerts.push(`Vida remanente ${n(gov.rl,1)} años (<2)`);
+    out.action=(gov.rl<1||gov.last.e<=tm.t)?'Reparar / reemplazar':out.alerts.length?'Inspección por condición (CBM)':'Inspección programada (RBI)';
+  }
+  return out;
+}
+
+// ===== UI =====
+const TABS=[['eq','Equipos'],['rbi','RBI'],['plan','Plan'],['dat','Datos']];
+function render(){
+  document.getElementById('nav').innerHTML=TABS.map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+  document.getElementById('app').innerHTML=({eq:vEq,rbi:vRbi,plan:vPlan,dat:vDat})[tab]();
+}
+const go=k=>{tab=k;render()};
+const sel=i=>{S.sel=i;save();render();scrollTo(0,0)};
+const badge=lv=>`<span class="tag ${lv}">${LBL[lv]}</span>`;
+
+function vEq(){
+  const rows=S.eq.map((q,i)=>{const a=analyze(q);const g=a.gov;
+    return `<tr class="click" onclick="sel(${i})" style="${i===S.sel?'background:var(--bg)':''}"><td><b>${esc(q.tag)}</b><div class="mu">${esc(FAMILIAS[q.familia]||q.familia)} · ${esc((SUBTIPOS[q.familia]||{})[q.subtipo]||q.subtipo)}</div><div class="mu">${esc(q.desc)}</div></td><td>${n(a.tm.t)}</td><td>${g?n(g.last.e):'–'}</td><td>${g?n(g.cr,3):'–'}</td><td>${g?n(g.rl,1):'–'}</td><td>${g?badge(a.lv):'–'}</td></tr>`}).join('');
+  return `<div class="card"><h2>Equipos registrados</h2><div class="wrap"><table><tr><th>Equipo</th><th>t mín (mm)</th><th>t act (mm)</th><th>VC (mm/año)</th><th>Vida rem. (años)</th><th>Riesgo</th></tr>${rows}</table></div>
+  <div style="margin-top:10px"><button class="b" onclick="addEq()">+ Nuevo equipo</button></div></div>`+(S.eq[S.sel]?vDet(S.sel):'');
+}
+function addEq(){S.eq.push({tag:'NUEVO-'+(S.eq.length+1),desc:'',familia:'estanques_recipientes',subtipo:'estanque',tipo:'cil',mat:'SA-516 Gr. 70',S:138,E:1,P:1,T:100,D:1000,CA:3,tnom:10,inst:'2020-01-01',cons:3,iso:[],cmls:[]});S.sel=S.eq.length-1;save();render()}
+function delEq(i){if(!confirm('¿Eliminar este equipo?'))return;S.eq.splice(i,1);S.sel=0;save();render()}
+function fld(i,k,l,type='text',extra=''){const q=S.eq[i];return `<div><label>${l}</label><input type="${type}" ${type==='number'?'step="any"':''} value="${esc(q[k])}" onchange="setF(${i},'${k}',this.value,'${type}')" ${extra}></div>`}
+function setF(i,k,v,type){const q=S.eq[i];q[k]=type==='number'?parseFloat(v):v;save();render()}
+function setMat(i,v){S.eq[i].mat=v;save();render()}
+function setTipo(i,v){S.eq[i].tipo=v;save();render()}
+function setFamilia(i,v){S.eq[i].familia=v;S.eq[i].subtipo=Object.keys(SUBTIPOS[v])[0];save();render()}
+
+function vDet(i){
+  const q=S.eq[i],a=analyze(q);
+  const cm=a.res.map((r,j)=>{const L=[...r.c.lect].sort((x,y)=>x.f<y.f?-1:1).map(l=>`${l.f}: ${n(l.e)}`).join('<br>');
+    const margen=r.last?r.last.e-a.tm.t:null;const estado=!r.last?'–':margen<=0?'<span class="al">Crítico</span>':margen<=1?'<b style="color:var(--wa)">Alerta</b>':'<span style="color:var(--ok)">Aceptable</span>';
+    const critico=a.gov===r?'<div class="al">Punto gobernante</div>':'';
+    return `<tr><td><b>${esc(r.c.id)}</b> <span class="mu">${r.c.tipo}</span><div class="mu">${esc(r.c.ub)}</div></td><td>${L||'–'}</td><td>${r.last?`<b>${n(r.last.e)}</b><div class="mu">Margen: ${n(margen)} mm</div>`:'–'}</td><td>${r.last?`${n(r.lt,3)} / ${n(r.st,3)}<div><b>${n(r.cr,3)}</b> gobernante</div>`:'–'}</td><td>${r.last?n(r.rl,1):'–'}</td><td>${estado}${critico}</td>
+    <td><input type="date" id="d${i}_${j}" style="margin-bottom:4px"><div class="row"><input type="number" step="any" placeholder="mm" id="e${i}_${j}"><button class="g" onclick="addRead(${i},${j})">+ Lectura</button></div></td></tr>`}).join('');
+  const iso=q.iso.map((x,j)=>`<tr><td><b>${esc(x.cod)}</b></td><td>${esc(x.nota)}</td><td><button class="g" onclick="S.eq[${i}].iso.splice(${j},1);save();render()">✕</button></td></tr>`).join('');
+  return `<div class="card"><h2>${esc(q.tag)} · datos y cálculo de espesor mínimo</h2>
+  <div class="grid">${fld(i,'tag','Tag')}${fld(i,'desc','Descripción')}
+  <div><label>Familia del equipo</label><select onchange="setFamilia(${i},this.value)">${Object.entries(FAMILIAS).map(([k,v])=>`<option value="${k}" ${(q.familia||'otros')===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  <div><label>Tipo específico</label><select onchange="setF(${i},'subtipo',this.value,'text')">${Object.entries(SUBTIPOS[q.familia]||{}).map(([k,v])=>`<option value="${k}" ${q.subtipo===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  <div><label>Componente evaluado</label><select onchange="setTipo(${i},this.value)">${Object.entries(TIPOS).map(([k,v])=>`<option value="${k}" ${q.tipo===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  <div><label>Material ASME (especificación y grado/tipo)</label><select onchange="setMat(${i},this.value)">${Object.keys(MATS).map(k=>`<option ${q.mat===k?'selected':''}>${k}</option>`).join('')}</select><div class="mu">${esc(MAT_INFO[q.mat]||'Ingrese la identificación desde la documentación técnica')}</div></div>
+  ${fld(i,'S','S esfuerzo admisible confirmado (MPa)','number')}${fld(i,'E','E eficiencia de junta','number')}${fld(i,'P','P diseño (MPa)','number')}${fld(i,'T','T diseño (°C)','number')}
+  ${fld(i,'D',q.tipo==='tub'?'D exterior (mm)':'D interior (mm)','number')}${fld(i,'CA','Sobreespesor corrosión (mm)','number')}${fld(i,'tnom','t nominal inicial (mm)','number')}${fld(i,'inst','Fecha instalación','date')}
+  <div><label>Consecuencia (1–5, valor de entrada)</label><select onchange="setF(${i},'cons',this.value,'number')">${[1,2,3,4,5].map(c=>`<option ${q.cons===c?'selected':''}>${c}</option>`).join('')}</select></div></div>
+  <div class="res"><b>Norma:</b> ${NORMA[q.tipo]}<br><span class="mu">${a.tm.f}</span><br>
+  ${a.tm.t==null?'<span class="al">Datos inválidos (denominador ≤ 0)</span>':`<span class="big">${n(a.tm.t)} mm</span> espesor mínimo requerido (retiro)<br>${n(a.tm.td)} mm con sobreespesor de corrosión`}
+  <div class="mu" style="margin-top:6px">S debe confirmarse en ASME II-D según especificación, grado/tipo, forma del producto, temperatura y edición aplicable. Seleccionar el material no modifica S automáticamente.</div></div>
+  <div style="margin-top:10px"><button class="g" onclick="delEq(${i})">Eliminar equipo</button></div></div>
+
+  <div class="card"><h2>Cálculo por punto de medición (CML / TML)</h2><div class="wrap"><table><tr><th>Punto</th><th>Histórico (mm)</th><th>t actual / margen</th><th>VC larga / corta / gobernante (mm/año)</th><th>Vida rem. (años)</th><th>Estado</th><th>Nueva lectura</th></tr>${cm||'<tr><td colspan="7" class="mu">Sin puntos</td></tr>'}</table></div>
+  <p class="mu">VC larga = (t nominal inicial − t actual) / años desde instalación. VC corta = pérdida entre las dos últimas lecturas. VC gobernante = máx(larga, corta, 0). Vida remanente = (t actual − t mínimo) / VC gobernante.</p>
+  <div class="row" style="margin-top:12px"><div><label>ID</label><input id="nid" placeholder="CML-3"></div><div><label>Tipo</label><select id="ntp"><option>CML</option><option>TML</option></select></div><div style="flex:2"><label>Ubicación</label><input id="nub"></div><button class="b" onclick="addCml(${i})">+ Punto</button></div></div>
+
+  <div class="card"><h2>Isométricos</h2><div class="wrap"><table>${iso||'<tr><td class="mu">Sin isométricos</td></tr>'}</table></div>
+  <div class="row" style="margin-top:10px"><div><label>Código / archivo</label><input id="ic"></div><div style="flex:2"><label>Nota / CML asociados</label><input id="in"></div><button class="b" onclick="addIso(${i})">+ Agregar</button></div></div>`;
+}
+function addRead(i,j){const f=document.getElementById(`d${i}_${j}`).value,e=parseFloat(document.getElementById(`e${i}_${j}`).value);if(!f||isNaN(e))return alert('Ingresa fecha y espesor');S.eq[i].cmls[j].lect.push({f,e});save();render()}
+function addCml(i){const id=nid.value.trim();if(!id)return;S.eq[i].cmls.push({id,tipo:ntp.value,ub:nub.value,lect:[]});save();render()}
+function addIso(i){if(!ic.value.trim())return;S.eq[i].iso.push({cod:ic.value.trim(),nota:in_.value});save();render()}
+Object.defineProperty(window,'in_',{get:()=>document.getElementById('in')});
+
+function vRbi(){
+  const A=S.eq.map(q=>({q,a:analyze(q)})).filter(x=>x.a.gov);
+  let m='<div class="mx"><div class="h"></div>'+[1,2,3,4,5].map(c=>`<div class="h">C${c}</div>`).join('');
+  for(let p=5;p>=1;p--){m+=`<div class="h">P${p}</div>`;for(let c=1;c<=5;c++){const lv=lvl(p*c);m+=`<div class="${lv}">${A.filter(x=>x.a.P===p&&x.a.C===c).map(x=>esc(x.q.tag)).join('<br>')}</div>`}}
+  m+='</div>';
+  const rows=A.sort((x,y)=>y.a.R-x.a.R).map(({q,a})=>`<tr><td><b>${esc(q.tag)}</b></td><td>${a.P}</td><td>${a.C}</td><td>${a.R}</td><td>${badge(a.lv)}</td><td>${n(a.gov.rl,1)}</td><td>${n(a.interval,1)}</td></tr>`).join('');
+  return `<div class="card"><h2>Matriz de riesgo (solo adelgazamiento)</h2>${m}
+  <p class="mu">Probabilidad según vida remanente del punto crítico: ≤2 años→5; ≤5→4; ≤10→3; ≤20→2; >20→1. Consecuencia = valor de entrada por equipo. Riesgo = P×C (≥15 alto, 8–14 medio-alto, 4–7 medio, ≤3 bajo). Modelo simplificado, no reemplaza API 581.</p></div>
+  <div class="card"><h2>Ranking de riesgo</h2><div class="wrap"><table><tr><th>Equipo</th><th>P</th><th>C</th><th>P×C</th><th>Nivel</th><th>Vida rem. (a)</th><th>Intervalo (a)</th></tr>${rows}</table></div>
+  <p class="mu">Intervalo = mín(vida remanente/2, tope por nivel: alto 2, medio-alto 4, medio 6, bajo 10 años).</p></div>`;
+}
+
+function vPlan(){
+  const A=S.eq.map(q=>({q,a:analyze(q)})).filter(x=>x.a.gov).sort((x,y)=>x.a.next-y.a.next);
+  const now=new Date();
+  const rows=A.map(({q,a})=>{const d=(a.next-now)/864e5;const st=d<0?'<span class="al">Vencida</span>':d<183?'<b style="color:var(--wa)">≤ 6 meses</b>':'<span style="color:var(--ok)">Vigente</span>';
+    return `<tr><td><b>${esc(q.tag)}</b></td><td>${fd(a.next)}<div>${st}</div></td><td>${a.action}</td><td>${a.alerts.map(x=>'• '+esc(x)).join('<br>')||'<span class="mu">Sin alertas</span>'}</td></tr>`}).join('');
+  return `<div class="card"><h2>Programa de intervenciones (CBM + RBI)</h2><div class="wrap"><table><tr><th>Equipo</th><th>Próxima inspección</th><th>Acción</th><th>Disparadores CBM</th></tr>${rows}</table></div>
+  <p class="mu">Fecha = última medición + intervalo RBI. CBM adelanta la acción si hay espesor ≤1 mm sobre el mínimo, velocidad reciente >1,5× la histórica o vida remanente <2 años.</p></div>`;
+}
+
+function vDat(){
+  return `<div class="card"><h2>Datos (JSON)</h2><p class="mu">Se guardan en este navegador. Copia el JSON para respaldarlo o pégalo para importarlo.</p>
+  <textarea id="js" rows="10">${esc(JSON.stringify(S,null,1))}</textarea>
+  <div class="row" style="margin-top:8px"><button class="g" onclick="cp()">Copiar</button><button class="b" onclick="imp()">Importar</button><button class="g" onclick="if(confirm('¿Restablecer datos de ejemplo?')){S=seed();save();render()}">Restablecer ejemplo</button></div></div>`;
+}
+function cp(){const t=document.getElementById('js');t.select();try{navigator.clipboard.writeText(t.value)}catch(e){}}
+function imp(){try{const o=JSON.parse(document.getElementById('js').value);if(!o.eq)throw 0;S=o;save();tab='eq';render()}catch(e){alert('JSON inválido')}}
+render();
+</script>
+</body>
+</html>
